@@ -5,44 +5,39 @@ const token = process.env.BOT_TOKEN;
 const allowedId = process.env.ALLOWED_CHAT_ID;
 
 if (!token) {
-  console.error("❌ BOT_TOKEN is not set. Exiting.");
-  process.exit(1);
+  console.error("❌ BOT_TOKEN is not set. Exiting in 5s...");
+  setTimeout(() => process.exit(1), 5000);
+} else {
+  console.log("✅ Bot is starting...");
+  console.log("🔑 BOT_TOKEN:", token.slice(0, 10) + "...");  // partial mask
+  console.log("📨 ALLOWED_CHAT_ID:", allowedId || "not set");
 }
-
-console.log("✅ Bot is starting...");
 
 const bot = new TelegramBot(token, { polling: true });
 
 bot.on('polling_error', (err) => {
-  console.error("Polling error:", err.message);
+  console.error("❌ Polling error:", err.message);
 });
 
 bot.onText(/\/start/, (msg) => {
   if (allowedId && msg.chat.id.toString() !== allowedId) return;
-  bot.sendMessage(msg.chat.id, `👋 Привет! Я SEO бот. Пришли мне ссылку, и я пришлю краткий SEO-аудит.\n\nТы также можешь использовать команду /audit https://example.com`);
+  bot.sendMessage(msg.chat.id, "👋 Привет! Я SEO бот. Пришли мне ссылку или используй /audit https://example.com");
 });
 
 bot.onText(/\/help/, (msg) => {
-  bot.sendMessage(msg.chat.id, `📘 Помощь:\n— Пришли ссылку: https://site.com\n— Или: /audit https://site.com`);
+  bot.sendMessage(msg.chat.id, "📘 Помощь:\n— Пришли ссылку: https://site.com\n— /audit https://site.com");
 });
 
-bot.onText(/\/audit (.+)/, (msg, match) => {
+bot.onText(/\/audit\s+(https?:\/\/\S+)/, (msg, match) => {
   const url = match[1];
-  if (!url.startsWith('http')) {
-    return bot.sendMessage(msg.chat.id, '❌ Пришли корректный URL (с http/https).');
-  }
   auditSite(msg.chat.id, url);
 });
 
 bot.on('message', (msg) => {
   const text = msg.text?.trim();
-  if (text?.startsWith('/start') || text?.startsWith('/help') || text?.startsWith('/audit')) return;
-
-  if (text?.startsWith('http')) {
-    auditSite(msg.chat.id, text);
-  } else {
-    bot.sendMessage(msg.chat.id, '🤖 Я ожидаю ссылку или команду /audit. Попробуй /help для списка доступных команд.');
-  }
+  if (/^\/(start|help|audit)/.test(text)) return;
+  if (/^https?:\/\//.test(text)) auditSite(msg.chat.id, text);
+  else bot.sendMessage(msg.chat.id, "🤖 Ожидаю ссылку или команду /audit. Попробуй /help.");
 });
 
 async function auditSite(chatId, url) {
@@ -59,23 +54,16 @@ async function auditSite(chatId, url) {
       const desc = document.querySelector('meta[name="description"]')?.content || '—';
       const canonical = document.querySelector('link[rel="canonical"]')?.href || '—';
       const robots = document.querySelector('meta[name="robots"]')?.content || '—';
-      const h1 = [...document.querySelectorAll('h1')].map(el => el.innerText).join(', ') || '—';
+      const h1 = [...document.querySelectorAll('h1')].map(el => el.innerText.trim()).join(', ') || '—';
       const imgs = [...document.images];
       const broken = imgs.filter(i => !i.complete || i.naturalWidth === 0).length;
-
-      return `<b>📊 SEO-АУДИТ</b>
-<b>Title:</b> ${escape(title)}
-<b>Description:</b> ${escape(desc)}
-<b>Canonical:</b> ${escape(canonical)}
-<b>Meta Robots:</b> ${escape(robots)}
-<b>H1:</b> ${escape(h1)}
-<b>Images:</b> ${imgs.length}, <b>Broken:</b> ${broken}`;
+      return `📊 <b>SEO-АУДИТ</b>\n<b>Title:</b> ${escape(title)}\n<b>Description:</b> ${escape(desc)}\n<b>Canonical:</b> ${escape(canonical)}\n<b>Meta Robots:</b> ${escape(robots)}\n<b>H1:</b> ${escape(h1)}\n<b>Images:</b> ${imgs.length}, <b>Broken:</b> ${broken}`;
     });
 
     await bot.sendMessage(chatId, report, { parse_mode: 'HTML' });
     await browser.close();
   } catch (e) {
-    bot.sendMessage(chatId, `❌ Ошибка: ${e.message}`);
-    console.error("Audit error:", e);
+    console.error("❌ Audit error:", e);
+    bot.sendMessage(chatId, `❌ Ошибка во время аудита: ${e.message}`);
   }
 }
