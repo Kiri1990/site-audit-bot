@@ -1,0 +1,14 @@
+{
+  "name": "telegram-site-audit-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot that audits any site by URL and sends a report",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.61.0",
+    "puppeteer": "^21.0.0"
+  }
+}
