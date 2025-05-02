@@ -4,7 +4,18 @@ import puppeteer from 'puppeteer';
 const token = process.env.BOT_TOKEN;
 const allowedId = process.env.ALLOWED_CHAT_ID;
 
+if (!token) {
+  console.error("❌ BOT_TOKEN is not set. Exiting.");
+  process.exit(1);
+}
+
+console.log("✅ Bot is starting...");
+
 const bot = new TelegramBot(token, { polling: true });
+
+bot.on('polling_error', (err) => {
+  console.error("Polling error:", err.message);
+});
 
 bot.onText(/\/start/, (msg) => {
   if (allowedId && msg.chat.id.toString() !== allowedId) return;
@@ -24,9 +35,13 @@ bot.onText(/\/audit (.+)/, (msg, match) => {
 });
 
 bot.on('message', (msg) => {
-  const url = msg.text;
-  if (url.startsWith('http')) {
-    auditSite(msg.chat.id, url);
+  const text = msg.text?.trim();
+  if (text?.startsWith('/start') || text?.startsWith('/help') || text?.startsWith('/audit')) return;
+
+  if (text?.startsWith('http')) {
+    auditSite(msg.chat.id, text);
+  } else {
+    bot.sendMessage(msg.chat.id, '🤖 Я ожидаю ссылку или команду /audit. Попробуй /help для списка доступных команд.');
   }
 });
 
@@ -61,5 +76,6 @@ async function auditSite(chatId, url) {
     await browser.close();
   } catch (e) {
     bot.sendMessage(chatId, `❌ Ошибка: ${e.message}`);
+    console.error("Audit error:", e);
   }
 }
