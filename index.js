@@ -1,16 +1,22 @@
+import http from 'http';
 import TelegramBot from 'node-telegram-bot-api';
 import puppeteer from 'puppeteer';
 
-const token = process.env.BOT_TOKEN;
+//  ───── 1) Простой HTTP-сервер ──────────────────────────────────
+const port = process.env.PORT || 3000;
+http.createServer((req, res) => res.end('OK')).listen(port, () => {
+  console.log(`🌐 HTTP server listening on port ${port}`);
+});
+// ────────────────────────────────────────────────────────────────
+
+const token     = process.env.BOT_TOKEN;
 const allowedId = process.env.ALLOWED_CHAT_ID;
 
 if (!token) {
   console.error("❌ BOT_TOKEN is not set. Exiting in 5s...");
   setTimeout(() => process.exit(1), 5000);
 } else {
-  console.log("✅ Bot is starting...");
-  console.log("🔑 BOT_TOKEN:", token.slice(0, 10) + "...");  // partial mask
-  console.log("📨 ALLOWED_CHAT_ID:", allowedId || "not set");
+  console.log("✅ Bot is starting…");
 }
 
 const bot = new TelegramBot(token, { polling: true });
@@ -21,8 +27,11 @@ bot.on('polling_error', (err) => {
 
 bot.onText(/\/start/, (msg) => {
   if (allowedId && msg.chat.id.toString() !== allowedId) return;
-  bot.sendMessage(msg.chat.id, "👋 Привет! Я SEO бот. Пришли мне ссылку или используй /audit https://example.com");
+  bot.sendMessage(msg.chat.id,
+    "👋 Привет! Я SEO-бот. Пришли ссылку или /audit https://example.com"
+  );
 });
+
 
 bot.onText(/\/help/, (msg) => {
   bot.sendMessage(msg.chat.id, "📘 Помощь:\n— Пришли ссылку: https://site.com\n— /audit https://site.com");
